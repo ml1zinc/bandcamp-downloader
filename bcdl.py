@@ -80,7 +80,7 @@ def usage_help():
     '''Print help massage and exit
 
     '''
-    print('bcsr.py [OPTIONS] [OPT_ARGUMENTS] [URL]\n',
+    print('bcdl.py [OPTIONS] [OPT_ARGUMENTS] [URL]\n',
           '-a         download all album, will slice url to <owner>.bandcamp.com\n',
           '-p         path, set directory, -p [PATH]\n',
           '-n         numbering files\n',
