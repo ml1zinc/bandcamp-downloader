@@ -40,7 +40,7 @@ def download(directory_path: str, names: list[str], links: list[str], cover_url:
     print('Done')
 
 
-def album_download(url: URL, num: bool = False):
+def album_download(download_dir: str, url: URL, num: bool = False):
     '''Function download full album page
 
     '''
@@ -68,12 +68,12 @@ def album_download(url: URL, num: bool = False):
     print(f'Songs: {files_names}')
 
 
-    directory_path = os.path.join(_DEFAULT_DIR, album_name)
+    directory_path = os.path.join(download_dir, album_name)
 
     if not os.path.exists(directory_path):
         os.makedirs(directory_path)
 
-    download(album_name, files_names, files_links, cover, num=num)
+    download(directory_path, files_names, files_links, cover, num=num)
 
 
 def usage_help():
@@ -95,6 +95,7 @@ def main():
 
     default_download = 'album'
     default_num = False
+    download_dir = _DEFAULT_DIR
 
     if sys.argv[1].startswith('-') and len(sys.argv[1]) != 1:
         main_url: URL = sys.argv[-1]
@@ -108,31 +109,32 @@ def main():
             default_num = True
 
         if '-p' in sys.argv[1:]:
-            _DEFAULT_DIR = sys.argv[sys.argv.index('-p') + 1]
+            download_dir = sys.argv[sys.argv.index('-p') + 1]
+            print(download_dir)
 
-        if 'p' in sys.argv[1]:
+        elif 'p' in sys.argv[1]:
             if sys.argv[2] != sys.argv[-1]:
                 usage_help()
-            _DEFAULT_DIR = sys.argv[2]
+            download_dir = sys.argv[2]
 
     else:
         usage_help()
 
 
     if default_download == 'album':
-        album_download(main_url, num=default_num)
+        album_download(download_dir, main_url, num=default_num)
 
     elif default_download == 'discography':
         discography_page = requests.get(main_url)
         soup = bs(discography_page.text, features="html.parser")
         urls = soup.findAll('li', {'data-band-id': True})
         band_name = soup.find('p', {'id': "band-name-location"}).find('span', {'class': 'title'}).text
-        _DEFAULT_DIR = os.path.join(_DEFAULT_DIR, band_name)
+        download_dir = os.path.join(download_dir, band_name)
 
         main_url = main_url[:main_url.rfind('/')] if main_url.rfind('/') > main_url.rfind('.') else main_url
 
         for url in urls:
-            album_download((f"{main_url}{url.find('a').attrs['href']}"), num=default_num)
+            album_download(download_dir, (f"{main_url}{url.find('a').attrs['href']}"), num=default_num)
 
 
 if __name__ == '__main__':
