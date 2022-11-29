@@ -2,6 +2,7 @@
 import sys
 import os
 import json
+import argparse
 
 import requests
 from bs4 import BeautifulSoup as bs
@@ -76,65 +77,56 @@ def album_download(download_dir: str, url: URL, num: bool = False):
     download(directory_path, files_names, files_links, cover, num=num)
 
 
-def usage_help():
-    '''Print help massage and exit
-
-    '''
-    print('bcdl.py [OPTIONS] [OPT_ARGUMENTS] [URL]\n',
-          '-a         download all album, will slice url to <owner>.bandcamp.com\n',
-          '-p         path, set directory, -p [PATH]\n',
-          '-n         numbering files\n',
-          )
-    sys.exit(0)
-
-
 def main():
     '''Main take args from cli and setup app work
 
     '''
 
-    default_download = 'album'
     default_num = False
     download_dir = _DEFAULT_DIR
 
-    if sys.argv[1].startswith('-') and len(sys.argv[1]) != 1:
-        main_url: URL = sys.argv[-1]
+    parser = argparse.ArgumentParser(prog='bcdl.py',
+                                     description='Simple Bandcamp cli downloader')
+    parser.add_argument('url', help='Url of album, discography or musician profile')
+    parser.add_argument('-a', '--all', action='store_true', dest='is_discography', help='download discography of musician')
+    parser.add_argument('-n', '--num', action='store_true', dest='is_enumerate', help='enumerate songs in albums')
+    parser.add_argument('-p', '--path', nargs=1, type=str, help='download discography of musician')
 
-        if 'a' in sys.argv[1] or '-a' in sys.argv[1:]:
-            default_download = 'discography'
-            index_of_domain_end = sys.argv[-1].index('.com') + 4  # 4 for adding lens of '.com'
-            main_url = main_url[:index_of_domain_end]  # trim main_url to domain name
+    args = parser.parse_args()
 
-        if 'n' in sys.argv[1] or '-n' in sys.argv[1:]:
-            default_num = True
+    main_url: URL = args.url
 
-        if '-p' in sys.argv[1:]:
-            download_dir = sys.argv[sys.argv.index('-p') + 1]
-            print(download_dir)
+    is_discography = args.is_discography
+    default_num = args.is_enumerate
+    path = args.path[0]
 
-        elif 'p' in sys.argv[1]:
-            if sys.argv[2] != sys.argv[-1]:
-                usage_help()
-            download_dir = sys.argv[2]
-
-    else:
-        usage_help()
+    if path is not None:
+        download_dir = path
 
 
-    if default_download == 'album':
-        album_download(download_dir, main_url, num=default_num)
+    if is_discography:
+        domain = '.com'
+        main_url = main_url[:main_url.rfind(domain) + len(domain)]
 
-    elif default_download == 'discography':
         discography_page = requests.get(main_url)
         soup = bs(discography_page.text, features="html.parser")
         urls = soup.findAll('li', {'data-band-id': True})
-        band_name = soup.find('p', {'id': "band-name-location"}).find('span', {'class': 'title'}).text
+        band_name_loc = soup.find('p', {'id': "band-name-location"})
+
+        if band_name_loc is None:
+            print('[Error] Not found band info on page. May be invalide url')
+            sys.exit()
+
+        band_name = band_name_loc.find('span', {'class': 'title'}).text
         download_dir = os.path.join(download_dir, band_name)
 
-        main_url = main_url[:main_url.rfind('/')] if main_url.rfind('/') > main_url.rfind('.') else main_url
+        # main_url = main_url[:main_url.rfind('/')] if main_url.rfind('/') > main_url.rfind('.') else main_url
 
         for url in urls:
             album_download(download_dir, (f"{main_url}{url.find('a').attrs['href']}"), num=default_num)
+
+    else:
+        album_download(download_dir, main_url, num=default_num)
 
 
 if __name__ == '__main__':
